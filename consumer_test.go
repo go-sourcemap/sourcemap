@@ -8,7 +8,7 @@ import (
 
 	. "launchpad.net/gocheck"
 
-	"github.com/airbrake/goab/sourcemap"
+	"github.com/airbrake/sourcemap"
 )
 
 const (
@@ -106,6 +106,7 @@ func (t *SourceMapTest) TestJQuerySourceMap(c *C) {
 	}{
 		{5, 6789, "http://code.jquery.com/jquery-2.0.3.js", "apply", 4360, 27},
 		{5, 10006, "http://code.jquery.com/jquery-2.0.3.js", "apply", 4676, 8},
+		{4, 553, "http://code.jquery.com/jquery-2.0.3.js", "ready", 93, 9},
 	}
 	for _, row := range table {
 		source, name, line, col, ok := smap.Source(row.genLine, row.genCol)
