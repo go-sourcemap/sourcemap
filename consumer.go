@@ -14,17 +14,6 @@ import (
 	"github.com/airbrake/sourcemap/base64vlq"
 )
 
-type fn func() (fn, error)
-
-type sourceMap struct {
-	Version    int           `json:"version"`
-	File       string        `json:"file"`
-	SourceRoot string        `json:"sourceRoot"`
-	Sources    []string      `json:"sources"`
-	Names      []interface{} `json:"names"`
-	Mappings   string        `json:"mappings"`
-}
-
 type Consumer struct {
 	baseURL  *url.URL
 	smap     *sourceMap
@@ -74,6 +63,10 @@ func Parse(urlStr string, b []byte) (*Consumer, error) {
 		smap:     smap,
 		mappings: mappings,
 	}, nil
+}
+
+func (c *Consumer) File() string {
+	return c.smap.File
 }
 
 func (c *Consumer) Source(genLine, genCol int) (source, name string, line, col int, ok bool) {
@@ -148,6 +141,17 @@ func (c *Consumer) SourceName(genLine, genCol int, genName string) (name string,
 	}
 
 	return
+}
+
+type fn func() (fn, error)
+
+type sourceMap struct {
+	Version    int           `json:"version"`
+	File       string        `json:"file"`
+	SourceRoot string        `json:"sourceRoot"`
+	Sources    []string      `json:"sources"`
+	Names      []interface{} `json:"names"`
+	Mappings   string        `json:"mappings"`
 }
 
 type mapping struct {
