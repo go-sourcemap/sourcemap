@@ -15,14 +15,12 @@ import (
 )
 
 type Consumer struct {
-	baseURL  *url.URL
-	smap     *sourceMap
-	mappings *mappings
+	sourceRootURL *url.URL
+	smap          *sourceMap
+	mappings      *mappings
 }
 
-func Parse(urlStr string, b []byte) (*Consumer, error) {
-	var baseURL *url.URL
-
+func Parse(mapURL string, b []byte) (*Consumer, error) {
 	smap := &sourceMap{}
 	err := json.Unmarshal(b, smap)
 	if err != nil {
@@ -32,22 +30,25 @@ func Parse(urlStr string, b []byte) (*Consumer, error) {
 	if smap.Version != 3 {
 		return nil, errors.New("sourcemap: only 3rd version is supported")
 	}
+
+	var sourceRootURL *url.URL
 	if smap.SourceRoot != "" {
-		u, err := url.Parse(urlStr)
+		u, err := url.Parse(smap.SourceRoot)
 		if err != nil {
 			return nil, err
 		}
 		if u.IsAbs() {
-			baseURL = u
-			baseURL.Path = path.Join(baseURL.Path, "_")
+			// Add a placeholder dir so we can use path.Dir later.
+			u.Path = path.Join(u.Path, "_")
+			sourceRootURL = u
 		}
 	} else {
-		u, err := url.Parse(urlStr)
+		u, err := url.Parse(mapURL)
 		if err != nil {
 			return nil, err
 		}
 		if u.IsAbs() {
-			baseURL = u
+			sourceRootURL = u
 		}
 	}
 
@@ -59,9 +60,9 @@ func Parse(urlStr string, b []byte) (*Consumer, error) {
 	smap.Mappings = ""
 
 	return &Consumer{
-		baseURL:  baseURL,
-		smap:     smap,
-		mappings: mappings,
+		sourceRootURL: sourceRootURL,
+		smap:          smap,
+		mappings:      mappings,
 	}, nil
 }
 
@@ -91,13 +92,7 @@ func (c *Consumer) Source(genLine, genCol int) (source, name string, line, col i
 	}
 
 	if match.sourcesInd >= 0 {
-		source = c.smap.Sources[match.sourcesInd]
-		if c.baseURL != nil {
-			c.baseURL.Path = path.Join(path.Dir(c.baseURL.Path), source)
-			source = c.baseURL.String()
-		} else if c.smap.SourceRoot != "" {
-			source = path.Join(c.smap.SourceRoot, source)
-		}
+		source = c.absSource(c.smap.Sources[match.sourcesInd])
 	}
 	if match.namesInd >= 0 {
 		iv := c.smap.Names[match.namesInd]
@@ -114,6 +109,27 @@ func (c *Consumer) Source(genLine, genCol int) (source, name string, line, col i
 	col = match.sourceCol
 	ok = true
 	return
+}
+
+func (c *Consumer) absSource(source string) string {
+	if path.IsAbs(source) {
+		return source
+	}
+
+	if u, err := url.Parse(source); err == nil && u.IsAbs() {
+		return source
+	}
+
+	if c.sourceRootURL != nil {
+		c.sourceRootURL.Path = path.Join(path.Dir(c.sourceRootURL.Path), source)
+		return c.sourceRootURL.String()
+	}
+
+	if c.smap.SourceRoot != "" {
+		return path.Join(c.smap.SourceRoot, source)
+	}
+
+	return source
 }
 
 func (c *Consumer) SourceName(genLine, genCol int, genName string) (name string, ok bool) {
