@@ -3,10 +3,7 @@ package sourcemap_test
 import (
 	"io/ioutil"
 	"net/http"
-	"sync"
 	"testing"
-
-	. "launchpad.net/gocheck"
 
 	"github.com/airbrake/sourcemap"
 )
@@ -16,48 +13,36 @@ const (
 )
 
 var (
-	jqSourceMapOnce sync.Once
-	_jqSourceMap    []byte
+	jqSourceMapBytes []byte
 )
 
-func jqSourceMap() []byte {
-	jqSourceMapOnce.Do(func() {
-		resp, err := http.Get(jqSourceMapURL)
-		if err != nil {
-			panic(err)
-		}
-		defer resp.Body.Close()
-
-		b, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			panic(err)
-		}
-
-		_jqSourceMap = b
-	})
-
-	return _jqSourceMap
-}
-
-func Test(t *testing.T) { TestingT(t) }
-
-type SourceMapTest struct{}
-
-var _ = Suite(&SourceMapTest{})
-
-func (t *SourceMapTest) TestSourceMap(c *C) {
-	smap, err := sourcemap.Parse("", sourceMapJSON)
+func init() {
+	resp, err := http.Get(jqSourceMapURL)
 	if err != nil {
 		panic(err)
 	}
+	defer resp.Body.Close()
 
-	table := []struct {
-		genLine int
-		genCol  int
-		source  string
-		name    string
-		line    int
-		col     int
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	jqSourceMapBytes = b
+}
+
+func TestSourceMap(t *testing.T) {
+	smap, err := sourcemap.Parse("", sourceMapJSON)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		genLine      int
+		genCol       int
+		wantedSource string
+		wantedName   string
+		wantedLine   int
+		wantedCol    int
 	}{
 		{1, 1, "/the/root/one.js", "", 1, 1},
 		{1, 5, "/the/root/one.js", "", 1, 5},
@@ -79,68 +64,86 @@ func (t *SourceMapTest) TestSourceMap(c *C) {
 		{1, 30, "/the/root/one.js", "baz", 2, 10},
 		{2, 12, "/the/root/two.js", "", 1, 11},
 	}
-	for _, row := range table {
-		source, name, line, col, ok := smap.Source(row.genLine, row.genCol)
-		c.Assert(ok, Equals, true, Commentf("%#v", row))
-		c.Assert(source, Equals, row.source, Commentf("%#v", row))
-		c.Assert(name, Equals, row.name, Commentf("%#v", row))
-		c.Assert(line, Equals, row.line, Commentf("%#v", row))
-		c.Assert(col, Equals, row.col, Commentf("%#v", row))
+	for _, test := range tests {
+		source, name, line, col, ok := smap.Source(test.genLine, test.genCol)
+		if !ok {
+			t.Fatalf("Source not found for %d, %d", test.genLine, test.genCol)
+		}
+		if source != test.wantedSource {
+			t.Fatalf("got %q, wanted %q", source, test.wantedSource)
+		}
+		if name != test.wantedName {
+			t.Fatalf("got %q, wanted %q", name, test.wantedName)
+		}
+		if line != test.wantedLine {
+			t.Fatalf("got %q, wanted %q", line, test.wantedLine)
+		}
+		if col != test.wantedCol {
+			t.Fatalf("got %q, wanted %q", col, test.wantedCol)
+		}
 	}
 
 	_, _, _, _, ok := smap.Source(3, 0)
-	c.Assert(ok, Equals, false)
+	if ok {
+		t.Fatal()
+	}
 }
 
-func (t *SourceMapTest) TestJQuerySourceMap(c *C) {
-	smap, err := sourcemap.Parse(jqSourceMapURL, jqSourceMap())
-	c.Assert(err, IsNil)
+func TestJQuerySourceMap(t *testing.T) {
+	smap, err := sourcemap.Parse(jqSourceMapURL, jqSourceMapBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	table := []struct {
-		genLine int
-		genCol  int
-		source  string
-		name    string
-		line    int
-		col     int
+	tests := []struct {
+		genLine      int
+		genCol       int
+		wantedSource string
+		wantedName   string
+		wantedLine   int
+		wantedCol    int
 	}{
 		{5, 6789, "http://code.jquery.com/jquery-2.0.3.js", "apply", 4360, 27},
 		{5, 10006, "http://code.jquery.com/jquery-2.0.3.js", "apply", 4676, 8},
 		{4, 553, "http://code.jquery.com/jquery-2.0.3.js", "ready", 93, 9},
 	}
-	for _, row := range table {
-		source, name, line, col, ok := smap.Source(row.genLine, row.genCol)
-		c.Assert(ok, Equals, true, Commentf("%#v", row))
-		c.Assert(source, Equals, row.source, Commentf("%#v", row))
-		c.Assert(name, Equals, row.name, Commentf("%#v", row))
-		c.Assert(line, Equals, row.line, Commentf("%#v", row))
-		c.Assert(col, Equals, row.col, Commentf("%#v", row))
-	}
-}
-
-func (t *SourceMapTest) BenchmarkParse(c *C) {
-	c.StopTimer()
-	b := jqSourceMap()
-	c.StartTimer()
-
-	for i := 0; i < c.N; i++ {
-		_, err := sourcemap.Parse(jqSourceMapURL, b)
-		if err != nil {
-			panic(err)
+	for _, test := range tests {
+		source, name, line, col, ok := smap.Source(test.genLine, test.genCol)
+		if !ok {
+			t.Fatalf("Source not found for %d, %d", test.genLine, test.genCol)
+		}
+		if source != test.wantedSource {
+			t.Fatalf("got %q, wanted %q", source, test.wantedSource)
+		}
+		if name != test.wantedName {
+			t.Fatalf("got %q, wanted %q", name, test.wantedName)
+		}
+		if line != test.wantedLine {
+			t.Fatalf("got %q, wanted %q", line, test.wantedLine)
+		}
+		if col != test.wantedCol {
+			t.Fatalf("got %q, wanted %q", col, test.wantedCol)
 		}
 	}
 }
 
-func (t *SourceMapTest) BenchmarkSource(c *C) {
-	c.StopTimer()
-	b := jqSourceMap()
-	smap, err := sourcemap.Parse(jqSourceMapURL, b)
-	if err != nil {
-		panic(err)
+func BenchmarkParse(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := sourcemap.Parse(jqSourceMapURL, jqSourceMapBytes)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
-	c.StartTimer()
+}
 
-	for i := 0; i < c.N; i++ {
+func BenchmarkSource(b *testing.B) {
+	smap, err := sourcemap.Parse(jqSourceMapURL, jqSourceMapBytes)
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
 		for j := 0; j < 10; j++ {
 			smap.Source(j, 100*j)
 		}
