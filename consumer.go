@@ -42,14 +42,6 @@ func Parse(mapURL string, b []byte) (*Consumer, error) {
 			u.Path = path.Join(u.Path, "_")
 			sourceRootURL = u
 		}
-	} else {
-		u, err := url.Parse(mapURL)
-		if err != nil {
-			return nil, err
-		}
-		if u.IsAbs() {
-			sourceRootURL = u
-		}
 	}
 
 	mappings, err := parseMappings(smap.Mappings)
