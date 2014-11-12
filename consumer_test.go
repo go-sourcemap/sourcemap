@@ -175,7 +175,6 @@ func BenchmarkSource(b *testing.B) {
 			smap.Source(j, 100*j)
 		}
 	}
-
 }
 
 // This is a test mapping which maps functions from two different files
