@@ -135,7 +135,7 @@ func (c *Consumer) SourceName(genLine, genCol int, genName string) (name string,
 
 	// Mapping not found.
 	if ind == len(c.mappings.values) {
-		return
+		return "", false
 	}
 
 	for i := ind; i >= 0; i-- {
@@ -217,8 +217,7 @@ func (m *mappings) parse() error {
 
 		c, err := m.rd.ReadByte()
 		if err == io.EOF {
-			m.values = append(m.values, m.value)
-			m.value = nil
+			m.push()
 			return nil
 		} else if err != nil {
 			return err
@@ -226,13 +225,10 @@ func (m *mappings) parse() error {
 
 		switch c {
 		case ',':
-			m.values = append(m.values, m.value)
-			m.value = nil
-
+			m.push()
 			next = m.parseGenCol
 		case ';':
-			m.values = append(m.values, m.value)
-			m.value = nil
+			m.push()
 
 			m.genLine++
 			m.genCol = 0
@@ -298,4 +294,9 @@ func (m *mappings) parseNamesInd() (fn, error) {
 	m.namesInd += n
 	m.value.namesInd = m.namesInd
 	return m.parseGenCol, nil
+}
+
+func (m *mappings) push() {
+	m.values = append(m.values, m.value)
+	m.value = nil
 }
