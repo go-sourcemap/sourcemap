@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/airbrake/sourcemap/base64vlq"
+	"gopkg.in/sourcemap.v1/base64vlq"
 )
 
 type Consumer struct {
