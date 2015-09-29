@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/airbrake/sourcemap/base64vlq"
+	"gopkg.in/sourcemap.v1/base64vlq"
 )
 
 func TestEncodeDecode(t *testing.T) {

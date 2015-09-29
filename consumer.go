@@ -1,4 +1,4 @@
-package sourcemap
+package sourcemap // import "gopkg.in/sourcemap.v1"
 
 import (
 	"encoding/json"

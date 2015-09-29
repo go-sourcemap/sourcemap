@@ -1,14 +1,13 @@
-# Source Maps consumer for Golang [![Build Status](https://travis-ci.org/go-sourcemap/sourcemap.svg)](https://travis-ci.org/go-sourcemap/sourcemap)
+package sourcemap_test
 
-## Installation
+import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
 
-Install:
+	"gopkg.in/sourcemap.v1"
+)
 
-    go get gopkg.in/sourcemap.v1
-
-## Quickstart
-
-```go
 func ExampleParse() {
 	mapURL := "http://code.jquery.com/jquery-2.0.3.min.map"
 	resp, err := http.Get(mapURL)
@@ -32,4 +31,3 @@ func ExampleParse() {
 	fmt.Println(file, fn, line, col, ok)
 	// Output: http://code.jquery.com/jquery-2.0.3.js apply 4360 27 true
 }
-```
