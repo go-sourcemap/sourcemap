@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/airbrake/sourcemap"
+	"gopkg.in/sourcemap.v1"
 )
 
 const (
@@ -99,6 +99,7 @@ func TestSourceMap(t *testing.T) {
 func TestSourceRootURL(t *testing.T) {
 	jsonStr := sourceMapJSON
 	jsonStr = strings.Replace(jsonStr, "/the/root", "http://the/root", 1)
+	jsonStr = strings.Replace(jsonStr, "one.js", "../one.js", 1)
 
 	smap, err := sourcemap.Parse("", []byte(jsonStr))
 	if err != nil {
@@ -106,7 +107,27 @@ func TestSourceRootURL(t *testing.T) {
 	}
 
 	tests := []*sourceMapTest{
-		{1, 1, "http://the/root/one.js", "", 1, 1},
+		{1, 1, "http://the/one.js", "", 1, 1},
+		{2, 1, "http://the/root/two.js", "", 1, 1},
+	}
+	for _, test := range tests {
+		test.assert(t, smap)
+	}
+}
+
+func TestEmptySourceRootURL(t *testing.T) {
+	jsonStr := sourceMapJSON
+	jsonStr = strings.Replace(jsonStr, "/the/root", "", 1)
+	jsonStr = strings.Replace(jsonStr, "one.js", "../one.js", 1)
+
+	smap, err := sourcemap.Parse("http://the/root/app.min.map", []byte(jsonStr))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []*sourceMapTest{
+		{1, 1, "http://the/one.js", "", 1, 1},
+		{2, 1, "http://the/root/two.js", "", 1, 1},
 	}
 	for _, test := range tests {
 		test.assert(t, smap)
@@ -145,9 +166,9 @@ func TestJQuerySourceMap(t *testing.T) {
 	}
 
 	tests := []*sourceMapTest{
-		{5, 6789, "jquery-2.0.3.js", "apply", 4360, 27},
-		{5, 10006, "jquery-2.0.3.js", "apply", 4676, 8},
-		{4, 553, "jquery-2.0.3.js", "ready", 93, 9},
+		{5, 6789, "http://code.jquery.com/jquery-2.0.3.js", "apply", 4360, 27},
+		{5, 10006, "http://code.jquery.com/jquery-2.0.3.js", "apply", 4676, 8},
+		{4, 553, "http://code.jquery.com/jquery-2.0.3.js", "ready", 93, 9},
 	}
 	for _, test := range tests {
 		test.assert(t, smap)

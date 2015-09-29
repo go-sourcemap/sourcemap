@@ -38,8 +38,15 @@ func Parse(mapURL string, b []byte) (*Consumer, error) {
 			return nil, err
 		}
 		if u.IsAbs() {
-			// Add a placeholder dir so we can use path.Dir later.
-			u.Path = path.Join(u.Path, "_")
+			sourceRootURL = u
+		}
+	} else if mapURL != "" {
+		u, err := url.Parse(mapURL)
+		if err != nil {
+			return nil, err
+		}
+		if u.IsAbs() {
+			u.Path = path.Dir(u.Path)
 			sourceRootURL = u
 		}
 	}
@@ -113,8 +120,9 @@ func (c *Consumer) absSource(source string) string {
 	}
 
 	if c.sourceRootURL != nil {
-		c.sourceRootURL.Path = path.Join(path.Dir(c.sourceRootURL.Path), source)
-		return c.sourceRootURL.String()
+		u := *c.sourceRootURL
+		u.Path = path.Join(c.sourceRootURL.Path, source)
+		return u.String()
 	}
 
 	if c.smap.SourceRoot != "" {
