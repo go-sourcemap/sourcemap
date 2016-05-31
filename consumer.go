@@ -17,11 +17,11 @@ import (
 type Consumer struct {
 	sourceRootURL *url.URL
 	smap          *sourceMap
-	mappings      *mappings
+	mappings      []mapping
 }
 
 func Parse(mapURL string, b []byte) (*Consumer, error) {
-	smap := &sourceMap{}
+	smap := new(sourceMap)
 	err := json.Unmarshal(b, smap)
 	if err != nil {
 		return nil, err
@@ -70,8 +70,8 @@ func (c *Consumer) File() string {
 }
 
 func (c *Consumer) Source(genLine, genCol int) (source, name string, line, col int, ok bool) {
-	i := sort.Search(len(c.mappings.values), func(i int) bool {
-		m := c.mappings.values[i]
+	i := sort.Search(len(c.mappings), func(i int) bool {
+		m := &c.mappings[i]
 		if m.genLine == genLine {
 			return m.genCol >= genCol
 		}
@@ -79,15 +79,15 @@ func (c *Consumer) Source(genLine, genCol int) (source, name string, line, col i
 	})
 
 	// Mapping not found.
-	if i == len(c.mappings.values) {
+	if i == len(c.mappings) {
 		return
 	}
 
-	match := c.mappings.values[i]
+	match := &c.mappings[i]
 
 	// Fuzzy match.
-	if match.genCol > genCol {
-		match = c.mappings.values[i-1]
+	if match.genCol > genCol && i > 0 {
+		match = &c.mappings[i-1]
 	}
 
 	if match.sourcesInd >= 0 {
@@ -133,8 +133,8 @@ func (c *Consumer) absSource(source string) string {
 }
 
 func (c *Consumer) SourceName(genLine, genCol int, genName string) (name string, ok bool) {
-	ind := sort.Search(len(c.mappings.values), func(i int) bool {
-		m := c.mappings.values[i]
+	ind := sort.Search(len(c.mappings), func(i int) bool {
+		m := c.mappings[i]
 		if m.genLine == genLine {
 			return m.genCol >= genCol
 		}
@@ -142,12 +142,12 @@ func (c *Consumer) SourceName(genLine, genCol int, genName string) (name string,
 	})
 
 	// Mapping not found.
-	if ind == len(c.mappings.values) {
+	if ind == len(c.mappings) {
 		return "", false
 	}
 
 	for i := ind; i >= 0; i-- {
-		m := c.mappings.values[i]
+		m := c.mappings[i]
 		if m.namesInd == -1 {
 			continue
 		}
@@ -190,11 +190,11 @@ type mappings struct {
 	sourceCol  int
 	namesInd   int
 
-	value  *mapping
-	values []*mapping
+	value  mapping
+	values []mapping
 }
 
-func parseMappings(s string) (*mappings, error) {
+func parseMappings(s string) ([]mapping, error) {
 	rd := strings.NewReader(s)
 	m := &mappings{
 		rd:  rd,
@@ -203,29 +203,20 @@ func parseMappings(s string) (*mappings, error) {
 		genLine:    1,
 		sourceLine: 1,
 	}
+	m.zeroValue()
 	err := m.parse()
 	if err != nil {
 		return nil, err
 	}
-	return m, nil
+	return m.values, nil
 }
 
 func (m *mappings) parse() error {
 	next := m.parseGenCol
 	for {
-		if m.value == nil {
-			m.value = &mapping{
-				genLine:    m.genLine,
-				genCol:     0,
-				sourcesInd: -1,
-				sourceCol:  0,
-				namesInd:   -1,
-			}
-		}
-
 		c, err := m.rd.ReadByte()
 		if err == io.EOF {
-			m.push()
+			m.pushValue()
 			return nil
 		} else if err != nil {
 			return err
@@ -233,10 +224,10 @@ func (m *mappings) parse() error {
 
 		switch c {
 		case ',':
-			m.push()
+			m.pushValue()
 			next = m.parseGenCol
 		case ';':
-			m.push()
+			m.pushValue()
 
 			m.genLine++
 			m.genCol = 0
@@ -304,7 +295,18 @@ func (m *mappings) parseNamesInd() (fn, error) {
 	return m.parseGenCol, nil
 }
 
-func (m *mappings) push() {
+func (m *mappings) zeroValue() {
+	m.value = mapping{
+		genLine:    m.genLine,
+		genCol:     0,
+		sourcesInd: -1,
+		sourceLine: 0,
+		sourceCol:  0,
+		namesInd:   -1,
+	}
+}
+
+func (m *mappings) pushValue() {
 	m.values = append(m.values, m.value)
-	m.value = nil
+	m.zeroValue()
 }
