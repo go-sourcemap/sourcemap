@@ -92,7 +92,7 @@ func TestSourceMap(t *testing.T) {
 
 	_, _, _, _, ok := smap.Source(3, 0)
 	if ok {
-		t.Fatal()
+		t.Fatal("source must not exist")
 	}
 }
 
