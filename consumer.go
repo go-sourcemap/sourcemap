@@ -159,7 +159,7 @@ func (c *Consumer) SourceName(genLine, genCol int, genName string) (name string,
 	return
 }
 
-type fn func() (fn, error)
+type fn func(m *mappings) (fn, error)
 
 type sourceMap struct {
 	Version    int           `json:"version"`
@@ -212,7 +212,7 @@ func parseMappings(s string) ([]mapping, error) {
 }
 
 func (m *mappings) parse() error {
-	next := m.parseGenCol
+	next := parseGenCol
 	for {
 		c, err := m.rd.ReadByte()
 		if err == io.EOF {
@@ -225,19 +225,19 @@ func (m *mappings) parse() error {
 		switch c {
 		case ',':
 			m.pushValue()
-			next = m.parseGenCol
+			next = parseGenCol
 		case ';':
 			m.pushValue()
 
 			m.genLine++
 			m.genCol = 0
 
-			next = m.parseGenCol
+			next = parseGenCol
 		default:
 			m.rd.UnreadByte()
 
 			var err error
-			next, err = next()
+			next, err = next(m)
 			if err != nil {
 				return err
 			}
@@ -245,54 +245,54 @@ func (m *mappings) parse() error {
 	}
 }
 
-func (m *mappings) parseGenCol() (fn, error) {
+func parseGenCol(m *mappings) (fn, error) {
 	n, err := m.dec.Decode()
 	if err != nil {
 		return nil, err
 	}
 	m.genCol += n
 	m.value.genCol = m.genCol
-	return m.parseSourcesInd, nil
+	return parseSourcesInd, nil
 }
 
-func (m *mappings) parseSourcesInd() (fn, error) {
+func parseSourcesInd(m *mappings) (fn, error) {
 	n, err := m.dec.Decode()
 	if err != nil {
 		return nil, err
 	}
 	m.sourcesInd += n
 	m.value.sourcesInd = m.sourcesInd
-	return m.parseSourceLine, nil
+	return parseSourceLine, nil
 }
 
-func (m *mappings) parseSourceLine() (fn, error) {
+func parseSourceLine(m *mappings) (fn, error) {
 	n, err := m.dec.Decode()
 	if err != nil {
 		return nil, err
 	}
 	m.sourceLine += n
 	m.value.sourceLine = m.sourceLine
-	return m.parseSourceCol, nil
+	return parseSourceCol, nil
 }
 
-func (m *mappings) parseSourceCol() (fn, error) {
+func parseSourceCol(m *mappings) (fn, error) {
 	n, err := m.dec.Decode()
 	if err != nil {
 		return nil, err
 	}
 	m.sourceCol += n
 	m.value.sourceCol = m.sourceCol
-	return m.parseNamesInd, nil
+	return parseNamesInd, nil
 }
 
-func (m *mappings) parseNamesInd() (fn, error) {
+func parseNamesInd(m *mappings) (fn, error) {
 	n, err := m.dec.Decode()
 	if err != nil {
 		return nil, err
 	}
 	m.namesInd += n
 	m.value.namesInd = m.namesInd
-	return m.parseGenCol, nil
+	return parseGenCol, nil
 }
 
 func (m *mappings) zeroValue() {

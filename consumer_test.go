@@ -92,7 +92,7 @@ func TestSourceMap(t *testing.T) {
 
 	_, _, _, _, ok := smap.Source(3, 0)
 	if ok {
-		t.Fatal()
+		t.Fatal("source must not exist")
 	}
 }
 
@@ -172,29 +172,6 @@ func TestJQuerySourceMap(t *testing.T) {
 	}
 	for _, test := range tests {
 		test.assert(t, smap)
-	}
-}
-
-func BenchmarkParse(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		_, err := sourcemap.Parse(jqSourceMapURL, jqSourceMapBytes)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkSource(b *testing.B) {
-	smap, err := sourcemap.Parse(jqSourceMapURL, jqSourceMapBytes)
-	if err != nil {
-		b.Fatal(err)
-	}
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		for j := 0; j < 10; j++ {
-			smap.Source(j, 100*j)
-		}
 	}
 }
 
