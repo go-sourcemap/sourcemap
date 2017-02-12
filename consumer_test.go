@@ -9,13 +9,9 @@ import (
 	"gopkg.in/sourcemap.v1"
 )
 
-const (
-	jqSourceMapURL = "http://code.jquery.com/jquery-2.0.3.min.map"
-)
+const jqSourceMapURL = "http://code.jquery.com/jquery-2.0.3.min.map"
 
-var (
-	jqSourceMapBytes []byte
-)
+var jqSourceMapBytes []byte
 
 func init() {
 	resp, err := http.Get(jqSourceMapURL)

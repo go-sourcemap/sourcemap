@@ -127,30 +127,3 @@ func (c *Consumer) absSource(source string) string {
 
 	return source
 }
-
-func (c *Consumer) SourceName(genLine, genCol int, genName string) (name string, ok bool) {
-	ind := sort.Search(len(c.mappings), func(i int) bool {
-		m := c.mappings[i]
-		if m.genLine == genLine {
-			return m.genCol >= genCol
-		}
-		return m.genLine >= genLine
-	})
-
-	// Mapping not found.
-	if ind == len(c.mappings) {
-		return "", false
-	}
-
-	for i := ind; i >= 0; i-- {
-		m := c.mappings[i]
-		if m.namesInd == -1 {
-			continue
-		}
-		if c.smap.Names[m.namesInd] == "" {
-
-		}
-	}
-
-	return
-}
