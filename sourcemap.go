@@ -31,15 +31,10 @@ type mappings struct {
 	rd  *strings.Reader
 	dec *base64vlq.Decoder
 
-	genLine    int
-	genCol     int
-	sourcesInd int
-	sourceLine int
-	sourceCol  int
-	namesInd   int
+	hasName bool
+	value   mapping
 
 	values []mapping
-	value  *mapping
 }
 
 func parseMappings(s string) ([]mapping, error) {
@@ -47,11 +42,10 @@ func parseMappings(s string) ([]mapping, error) {
 	m := &mappings{
 		rd:  rd,
 		dec: base64vlq.NewDecoder(rd),
-
-		genLine:    1,
-		sourceLine: 1,
 	}
-	m.pushValue()
+	m.value.genLine = 1
+	m.value.sourceLine = 1
+
 	err := m.parse()
 	if err != nil {
 		return nil, err
@@ -64,8 +58,10 @@ func (m *mappings) parse() error {
 	for {
 		c, err := m.rd.ReadByte()
 		if err == io.EOF {
+			m.pushValue()
 			return nil
-		} else if err != nil {
+		}
+		if err != nil {
 			return err
 		}
 
@@ -76,8 +72,8 @@ func (m *mappings) parse() error {
 		case ';':
 			m.pushValue()
 
-			m.genLine++
-			m.genCol = 0
+			m.value.genLine++
+			m.value.genCol = 0
 
 			next = parseGenCol
 		default:
@@ -99,8 +95,7 @@ func parseGenCol(m *mappings) (fn, error) {
 	if err != nil {
 		return nil, err
 	}
-	m.genCol += n
-	m.value.genCol = m.genCol
+	m.value.genCol += n
 	return parseSourcesInd, nil
 }
 
@@ -109,8 +104,7 @@ func parseSourcesInd(m *mappings) (fn, error) {
 	if err != nil {
 		return nil, err
 	}
-	m.sourcesInd += n
-	m.value.sourcesInd = m.sourcesInd
+	m.value.sourcesInd += n
 	return parseSourceLine, nil
 }
 
@@ -119,8 +113,7 @@ func parseSourceLine(m *mappings) (fn, error) {
 	if err != nil {
 		return nil, err
 	}
-	m.sourceLine += n
-	m.value.sourceLine = m.sourceLine
+	m.value.sourceLine += n
 	return parseSourceCol, nil
 }
 
@@ -129,8 +122,7 @@ func parseSourceCol(m *mappings) (fn, error) {
 	if err != nil {
 		return nil, err
 	}
-	m.sourceCol += n
-	m.value.sourceCol = m.sourceCol
+	m.value.sourceCol += n
 	return parseNamesInd, nil
 }
 
@@ -139,19 +131,27 @@ func parseNamesInd(m *mappings) (fn, error) {
 	if err != nil {
 		return nil, err
 	}
-	m.namesInd += n
-	m.value.namesInd = m.namesInd
+	m.hasName = true
+	m.value.namesInd += n
 	return parseGenCol, nil
 }
 
 func (m *mappings) pushValue() {
-	m.values = append(m.values, mapping{
-		genLine:    m.genLine,
-		genCol:     0,
-		sourcesInd: -1,
-		sourceLine: 0,
-		sourceCol:  0,
-		namesInd:   -1,
-	})
-	m.value = &m.values[len(m.values)-1]
+	if m.value.sourceLine == 1 && m.value.sourceCol == 0 {
+		return
+	}
+
+	if m.hasName {
+		m.values = append(m.values, m.value)
+		m.hasName = false
+	} else {
+		m.values = append(m.values, mapping{
+			genLine:    m.value.genLine,
+			genCol:     m.value.genCol,
+			sourcesInd: m.value.sourcesInd,
+			sourceLine: m.value.sourceLine,
+			sourceCol:  m.value.sourceCol,
+			namesInd:   -1,
+		})
+	}
 }
