@@ -2,7 +2,6 @@ package sourcemap
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/url"
 	"path"
@@ -24,7 +23,10 @@ func Parse(mapURL string, b []byte) (*Consumer, error) {
 	}
 
 	if smap.Version != 3 {
-		return nil, errors.New("sourcemap: only 3rd version is supported")
+		return nil, fmt.Errorf(
+			"sourcemap: got version=%d, but only 3rd version is supported",
+			smap.Version,
+		)
 	}
 
 	var sourceRootURL *url.URL
@@ -82,7 +84,10 @@ func (c *Consumer) Source(genLine, genCol int) (source, name string, line, col i
 	match := &c.mappings[i]
 
 	// Fuzzy match.
-	if match.genCol > genCol && i > 0 {
+	if match.genLine > genLine || match.genCol > genCol {
+		if i == 0 {
+			return
+		}
 		match = &c.mappings[i-1]
 	}
 
@@ -90,14 +95,14 @@ func (c *Consumer) Source(genLine, genCol int) (source, name string, line, col i
 		source = c.absSource(c.smap.Sources[match.sourcesInd])
 	}
 	if match.namesInd >= 0 {
-		iv := c.smap.Names[match.namesInd]
-		switch v := iv.(type) {
+		v := c.smap.Names[match.namesInd]
+		switch v := v.(type) {
 		case string:
 			name = v
 		case float64:
 			name = strconv.FormatFloat(v, 'f', -1, 64)
 		default:
-			name = fmt.Sprint(iv)
+			name = fmt.Sprint(v)
 		}
 	}
 	line = match.sourceLine
