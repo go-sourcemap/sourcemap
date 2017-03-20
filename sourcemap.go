@@ -1,10 +1,10 @@
-package sourcemap // import "gopkg.in/sourcemap.v1"
+package sourcemap
 
 import (
 	"io"
 	"strings"
 
-	"gopkg.in/sourcemap.v1/base64vlq"
+	"github.com/go-sourcemap/sourcemap/base64vlq"
 )
 
 type fn func(m *mappings) (fn, error)

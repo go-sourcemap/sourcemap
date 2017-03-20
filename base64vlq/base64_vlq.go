@@ -1,8 +1,6 @@
 package base64vlq
 
-import (
-	"io"
-)
+import "io"
 
 const encodeStd = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"gopkg.in/sourcemap.v1/base64vlq"
+	"github.com/go-sourcemap/sourcemap/base64vlq"
 )
 
 func TestEncodeDecode(t *testing.T) {

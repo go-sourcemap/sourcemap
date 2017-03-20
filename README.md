@@ -4,7 +4,7 @@
 
 Install:
 
-    go get gopkg.in/sourcemap.v1
+    go get github.com/go-sourcemap/sourcemap
 
 ## Quickstart
 

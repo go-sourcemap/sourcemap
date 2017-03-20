@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"gopkg.in/sourcemap.v1"
+	"github.com/go-sourcemap/sourcemap"
 )
 
 func ExampleParse() {

@@ -3,7 +3,7 @@ package sourcemap_test
 import (
 	"testing"
 
-	"gopkg.in/sourcemap.v1"
+	"github.com/go-sourcemap/sourcemap"
 )
 
 func BenchmarkParse(b *testing.B) {

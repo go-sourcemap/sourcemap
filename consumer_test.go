@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"gopkg.in/sourcemap.v1"
+	"github.com/go-sourcemap/sourcemap"
 )
 
 const jqSourceMapURL = "http://code.jquery.com/jquery-2.0.3.min.map"
