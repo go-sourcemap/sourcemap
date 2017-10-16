@@ -1,10 +1,12 @@
-# Source Maps consumer for Golang [![Build Status](https://travis-ci.org/go-sourcemap/sourcemap.svg?branch=v1)](https://travis-ci.org/go-sourcemap/sourcemap)
+# Source maps consumer for Golang [![Build Status](https://travis-ci.org/go-sourcemap/sourcemap.svg)](https://travis-ci.org/go-sourcemap/sourcemap)
 
 ## Installation
 
 Install:
 
-    go get github.com/go-sourcemap/sourcemap
+```shell
+go get github.com/go-sourcemap/sourcemap
+```
 
 ## Quickstart
 

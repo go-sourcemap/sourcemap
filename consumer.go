@@ -9,93 +9,175 @@ import (
 	"strconv"
 )
 
-type Consumer struct {
+type v3 struct {
+	sourceMap
+	Sections []section `json:"sections"`
+}
+
+type sourceMap struct {
+	Version    int           `json:"version"`
+	File       string        `json:"file"`
+	SourceRoot string        `json:"sourceRoot"`
+	Sources    []string      `json:"sources"`
+	Names      []interface{} `json:"names"`
+	Mappings   string        `json:"mappings"`
+
 	sourceRootURL *url.URL
-	smap          *sourceMap
 	mappings      []mapping
 }
 
-func Parse(mapURL string, b []byte) (*Consumer, error) {
-	smap := new(sourceMap)
-	err := json.Unmarshal(b, smap)
-	if err != nil {
-		return nil, err
+func (m *sourceMap) parse(mapURL string) error {
+	if err := checkVersion(m.Version); err != nil {
+		return err
 	}
 
-	if smap.Version != 3 {
-		return nil, fmt.Errorf(
-			"sourcemap: got version=%d, but only 3rd version is supported",
-			smap.Version,
-		)
-	}
-
-	var sourceRootURL *url.URL
-	if smap.SourceRoot != "" {
-		u, err := url.Parse(smap.SourceRoot)
+	if m.SourceRoot != "" {
+		u, err := url.Parse(m.SourceRoot)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if u.IsAbs() {
-			sourceRootURL = u
+			m.sourceRootURL = u
 		}
 	} else if mapURL != "" {
 		u, err := url.Parse(mapURL)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if u.IsAbs() {
 			u.Path = path.Dir(u.Path)
-			sourceRootURL = u
+			m.sourceRootURL = u
 		}
 	}
 
-	mappings, err := parseMappings(smap.Mappings)
+	mappings, err := parseMappings(m.Mappings)
+	if err != nil {
+		return err
+	}
+
+	m.mappings = mappings
+	// Free memory.
+	m.Mappings = ""
+
+	return nil
+}
+
+func (m *sourceMap) absSource(source string) string {
+	if path.IsAbs(source) {
+		return source
+	}
+
+	if u, err := url.Parse(source); err == nil && u.IsAbs() {
+		return source
+	}
+
+	if m.sourceRootURL != nil {
+		u := *m.sourceRootURL
+		u.Path = path.Join(m.sourceRootURL.Path, source)
+		return u.String()
+	}
+
+	if m.SourceRoot != "" {
+		return path.Join(m.SourceRoot, source)
+	}
+
+	return source
+}
+
+type section struct {
+	Offset struct {
+		Line   int `json:"line"`
+		Column int `json:"column"`
+	} `json:"offset"`
+	Map *sourceMap `json:"map"`
+}
+
+type Consumer struct {
+	file     string
+	sections []section
+}
+
+func Parse(mapURL string, b []byte) (*Consumer, error) {
+	v3 := new(v3)
+	err := json.Unmarshal(b, v3)
 	if err != nil {
 		return nil, err
 	}
-	// Free memory.
-	smap.Mappings = ""
 
+	if err := checkVersion(v3.Version); err != nil {
+		return nil, err
+	}
+
+	if len(v3.Sections) == 0 {
+		v3.Sections = append(v3.Sections, section{
+			Map: &v3.sourceMap,
+		})
+	}
+
+	for _, s := range v3.Sections {
+		err := s.Map.parse(mapURL)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	reverse(v3.Sections)
 	return &Consumer{
-		sourceRootURL: sourceRootURL,
-		smap:          smap,
-		mappings:      mappings,
+		file:     v3.File,
+		sections: v3.Sections,
 	}, nil
 }
 
 func (c *Consumer) File() string {
-	return c.smap.File
+	return c.file
 }
 
-func (c *Consumer) Source(genLine, genCol int) (source, name string, line, col int, ok bool) {
-	i := sort.Search(len(c.mappings), func(i int) bool {
-		m := &c.mappings[i]
+func (c *Consumer) Source(
+	genLine, genColumn int,
+) (source, name string, line, column int, ok bool) {
+	for i := range c.sections {
+		s := &c.sections[i]
+		if s.Offset.Line < genLine ||
+			(s.Offset.Line+1 == genLine && s.Offset.Column <= genColumn) {
+			genLine -= s.Offset.Line
+			genColumn -= s.Offset.Column
+			return c.source(s.Map, genLine, genColumn)
+		}
+	}
+	return
+}
+
+func (c *Consumer) source(
+	m *sourceMap, genLine, genColumn int,
+) (source, name string, line, column int, ok bool) {
+	i := sort.Search(len(m.mappings), func(i int) bool {
+		m := &m.mappings[i]
 		if m.genLine == genLine {
-			return m.genCol >= genCol
+			return m.genColumn >= genColumn
 		}
 		return m.genLine >= genLine
 	})
 
 	// Mapping not found.
-	if i == len(c.mappings) {
+	if i == len(m.mappings) {
 		return
 	}
 
-	match := &c.mappings[i]
+	match := &m.mappings[i]
 
 	// Fuzzy match.
-	if match.genLine > genLine || match.genCol > genCol {
+	if match.genLine > genLine || match.genColumn > genColumn {
 		if i == 0 {
 			return
 		}
-		match = &c.mappings[i-1]
+		match = &m.mappings[i-1]
 	}
 
 	if match.sourcesInd >= 0 {
-		source = c.absSource(c.smap.Sources[match.sourcesInd])
+		source = m.absSource(m.Sources[match.sourcesInd])
 	}
 	if match.namesInd >= 0 {
-		v := c.smap.Names[match.namesInd]
+		v := m.Names[match.namesInd]
 		switch v := v.(type) {
 		case string:
 			name = v
@@ -106,29 +188,24 @@ func (c *Consumer) Source(genLine, genCol int) (source, name string, line, col i
 		}
 	}
 	line = match.sourceLine
-	col = match.sourceCol
+	column = match.sourceColumn
 	ok = true
 	return
 }
 
-func (c *Consumer) absSource(source string) string {
-	if path.IsAbs(source) {
-		return source
+func checkVersion(version int) error {
+	if version == 3 || version == 0 {
+		return nil
 	}
+	return fmt.Errorf(
+		"sourcemap: got version=%d, but only 3rd version is supported",
+		version,
+	)
+}
 
-	if u, err := url.Parse(source); err == nil && u.IsAbs() {
-		return source
+func reverse(ss []section) {
+	last := len(ss) - 1
+	for i := 0; i < len(ss)/2; i++ {
+		ss[i], ss[last-i] = ss[last-i], ss[i]
 	}
-
-	if c.sourceRootURL != nil {
-		u := *c.sourceRootURL
-		u.Path = path.Join(c.sourceRootURL.Path, source)
-		return u.String()
-	}
-
-	if c.smap.SourceRoot != "" {
-		return path.Join(c.smap.SourceRoot, source)
-	}
-
-	return source
 }
