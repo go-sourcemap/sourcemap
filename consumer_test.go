@@ -29,24 +29,24 @@ func init() {
 
 type sourceMapTest struct {
 	genLine      int
-	genCol       int
+	genColumn    int
 	wantedSource string
 	wantedName   string
 	wantedLine   int
-	wantedCol    int
+	wantedColumn int
 }
 
 func (test *sourceMapTest) String() string {
-	return fmt.Sprintf("line=%d col=%d in file=%s", test.genLine, test.genCol, test.wantedSource)
+	return fmt.Sprintf("line=%d col=%d in file=%s", test.genLine, test.genColumn, test.wantedSource)
 }
 
 func (test *sourceMapTest) assert(t *testing.T, smap *sourcemap.Consumer) {
-	source, name, line, col, ok := smap.Source(test.genLine, test.genCol)
+	source, name, line, col, ok := smap.Source(test.genLine, test.genColumn)
 	if !ok {
 		if test.wantedSource == "" &&
 			test.wantedName == "" &&
 			test.wantedLine == 0 &&
-			test.wantedCol == 0 {
+			test.wantedColumn == 0 {
 			return
 		}
 		t.Fatalf("Source not found for %s", test)
@@ -60,13 +60,21 @@ func (test *sourceMapTest) assert(t *testing.T, smap *sourcemap.Consumer) {
 	if line != test.wantedLine {
 		t.Fatalf("line: got %d, wanted %d (%s)", line, test.wantedLine, test)
 	}
-	if col != test.wantedCol {
-		t.Fatalf("column: got %d, wanted %d (%s)", col, test.wantedCol, test)
+	if col != test.wantedColumn {
+		t.Fatalf("column: got %d, wanted %d (%s)", col, test.wantedColumn, test)
 	}
 }
 
 func TestSourceMap(t *testing.T) {
-	smap, err := sourcemap.Parse("", []byte(sourceMapJSON))
+	testSourceMap(t, sourceMapJSON)
+}
+
+func TestIndexedSourceMap(t *testing.T) {
+	testSourceMap(t, indexedSourceMapJSON)
+}
+
+func testSourceMap(t *testing.T, json string) {
+	smap, err := sourcemap.Parse("", []byte(json))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,6 +194,8 @@ func TestJQuerySourceMap(t *testing.T) {
 	}
 }
 
+// https://github.com/mozilla/source-map/blob/master/test/util.js
+//
 // This is a test mapping which maps functions from two different files
 // (one.js and two.js) to a minified generated source.
 //
@@ -206,14 +216,40 @@ func TestJQuerySourceMap(t *testing.T) {
 //     ONE.foo=function(a){return baz(a);};
 //     TWO.inc=function(a){return a+1;};
 
-var genCode = `exports.testGeneratedCode = "ONE.foo=function(a){return baz(a);};
+const genCode = `exports.testGeneratedCode = "ONE.foo=function(a){return baz(a);};
 TWO.inc=function(a){return a+1;};`
 
-var sourceMapJSON = `{
+const sourceMapJSON = `{
   "version": 3,
   "file": "min.js",
-  "names": ["bar", "baz", "n"],
   "sources": ["one.js", "two.js"],
   "sourceRoot": "/the/root",
+  "names": ["bar", "baz", "n"],
   "mappings": "CAAC,IAAI,IAAM,SAAUA,GAClB,OAAOC,IAAID;CCDb,IAAI,IAAM,SAAUE,GAClB,OAAOA"
+}`
+
+const indexedSourceMapJSON = `{
+  "version": 3,
+  "file": "min.js",
+  "sections": [{
+    "offset": {"line": 0, "column": 0},
+    "map": {
+      "version": 3,
+      "file": "min.js",
+      "sources": ["one.js"],
+      "sourceRoot": "/the/root",
+      "names": ["bar", "baz"],
+      "mappings": "CAAC,IAAI,IAAM,SAAUA,GAClB,OAAOC,IAAID"
+    }
+  }, {
+    "offset": {"line": 1, "column": 0},
+    "map": {
+      "version": 3,
+      "file": "min.js",
+      "sources": ["two.js"],
+      "sourceRoot": "/the/root",
+      "names": ["n"],
+      "mappings": "CAAC,IAAI,IAAM,SAAUA,GAClB,OAAOA"
+    }
+  }]
 }`

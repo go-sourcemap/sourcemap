@@ -1,6 +1,7 @@
 package sourcemap
 
 import (
+	"errors"
 	"io"
 	"strings"
 
@@ -9,22 +10,13 @@ import (
 
 type fn func(m *mappings) (fn, error)
 
-type sourceMap struct {
-	Version    int           `json:"version"`
-	File       string        `json:"file"`
-	SourceRoot string        `json:"sourceRoot"`
-	Sources    []string      `json:"sources"`
-	Names      []interface{} `json:"names"`
-	Mappings   string        `json:"mappings"`
-}
-
 type mapping struct {
-	genLine    int
-	genCol     int
-	sourcesInd int
-	sourceLine int
-	sourceCol  int
-	namesInd   int
+	genLine      int
+	genColumn    int
+	sourcesInd   int
+	sourceLine   int
+	sourceColumn int
+	namesInd     int
 }
 
 type mappings struct {
@@ -38,6 +30,10 @@ type mappings struct {
 }
 
 func parseMappings(s string) ([]mapping, error) {
+	if s == "" {
+		return nil, errors.New("sourcemap: mappings are empty")
+	}
+
 	rd := strings.NewReader(s)
 	m := &mappings{
 		rd:  rd,
@@ -73,7 +69,7 @@ func (m *mappings) parse() error {
 			m.pushValue()
 
 			m.value.genLine++
-			m.value.genCol = 0
+			m.value.genColumn = 0
 
 			next = parseGenCol
 		default:
@@ -95,7 +91,7 @@ func parseGenCol(m *mappings) (fn, error) {
 	if err != nil {
 		return nil, err
 	}
-	m.value.genCol += n
+	m.value.genColumn += n
 	return parseSourcesInd, nil
 }
 
@@ -122,7 +118,7 @@ func parseSourceCol(m *mappings) (fn, error) {
 	if err != nil {
 		return nil, err
 	}
-	m.value.sourceCol += n
+	m.value.sourceColumn += n
 	return parseNamesInd, nil
 }
 
@@ -137,7 +133,7 @@ func parseNamesInd(m *mappings) (fn, error) {
 }
 
 func (m *mappings) pushValue() {
-	if m.value.sourceLine == 1 && m.value.sourceCol == 0 {
+	if m.value.sourceLine == 1 && m.value.sourceColumn == 0 {
 		return
 	}
 
@@ -146,12 +142,12 @@ func (m *mappings) pushValue() {
 		m.hasName = false
 	} else {
 		m.values = append(m.values, mapping{
-			genLine:    m.value.genLine,
-			genCol:     m.value.genCol,
-			sourcesInd: m.value.sourcesInd,
-			sourceLine: m.value.sourceLine,
-			sourceCol:  m.value.sourceCol,
-			namesInd:   -1,
+			genLine:      m.value.genLine,
+			genColumn:    m.value.genColumn,
+			sourcesInd:   m.value.sourcesInd,
+			sourceLine:   m.value.sourceLine,
+			sourceColumn: m.value.sourceColumn,
+			namesInd:     -1,
 		})
 	}
 }
