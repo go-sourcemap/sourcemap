@@ -15,15 +15,15 @@ type v3 struct {
 }
 
 type sourceMap struct {
-	Version    int           `json:"version"`
-	File       string        `json:"file"`
-	SourceRoot string        `json:"sourceRoot"`
-	Sources    []string      `json:"sources"`
-	Names      []interface{} `json:"names"`
-	Mappings   string        `json:"mappings"`
+	Version        int           `json:"version"`
+	File           string        `json:"file"`
+	SourceRoot     string        `json:"sourceRoot"`
+	Sources        []string      `json:"sources"`
+	SourcesContent []string      `json:"sourcesContent"`
+	Names          []interface{} `json:"names"`
+	Mappings       string        `json:"mappings"`
 
-	sourceRootURL *url.URL
-	mappings      []mapping
+	mappings []mapping
 }
 
 func (m *sourceMap) parse(mapURL string) error {
@@ -31,13 +31,14 @@ func (m *sourceMap) parse(mapURL string) error {
 		return err
 	}
 
+	var sourceRootURL *url.URL
 	if m.SourceRoot != "" {
 		u, err := url.Parse(m.SourceRoot)
 		if err != nil {
 			return err
 		}
 		if u.IsAbs() {
-			m.sourceRootURL = u
+			sourceRootURL = u
 		}
 	} else if mapURL != "" {
 		u, err := url.Parse(mapURL)
@@ -46,8 +47,12 @@ func (m *sourceMap) parse(mapURL string) error {
 		}
 		if u.IsAbs() {
 			u.Path = path.Dir(u.Path)
-			m.sourceRootURL = u
+			sourceRootURL = u
 		}
+	}
+
+	for i, src := range m.Sources {
+		m.Sources[i] = m.absSource(sourceRootURL, src)
 	}
 
 	mappings, err := parseMappings(m.Mappings)
@@ -62,7 +67,7 @@ func (m *sourceMap) parse(mapURL string) error {
 	return nil
 }
 
-func (m *sourceMap) absSource(source string) string {
+func (m *sourceMap) absSource(root *url.URL, source string) string {
 	if path.IsAbs(source) {
 		return source
 	}
@@ -71,9 +76,9 @@ func (m *sourceMap) absSource(source string) string {
 		return source
 	}
 
-	if m.sourceRootURL != nil {
-		u := *m.sourceRootURL
-		u.Path = path.Join(m.sourceRootURL.Path, source)
+	if root != nil {
+		u := *root
+		u.Path = path.Join(u.Path, source)
 		return u.String()
 	}
 
@@ -128,10 +133,14 @@ func Parse(mapURL string, b []byte) (*Consumer, error) {
 	}, nil
 }
 
+// File returns an optional name of the generated code
+// that this source map is associated with.
 func (c *Consumer) File() string {
 	return c.file
 }
 
+// Source returns the original source, name, line, and column information
+// for the generated source's line and column positions.
 func (c *Consumer) Source(
 	genLine, genColumn int,
 ) (source, name string, line, column int, ok bool) {
@@ -174,7 +183,7 @@ func (c *Consumer) source(
 	}
 
 	if match.sourcesInd >= 0 {
-		source = m.absSource(m.Sources[match.sourcesInd])
+		source = m.Sources[match.sourcesInd]
 	}
 	if match.namesInd >= 0 {
 		v := m.Names[match.namesInd]
@@ -191,6 +200,22 @@ func (c *Consumer) source(
 	column = match.sourceColumn
 	ok = true
 	return
+}
+
+// SourceContent returns the original source content for the source.
+func (c *Consumer) SourceContent(source string) string {
+	for i := range c.sections {
+		s := &c.sections[i]
+		for i, src := range s.Map.Sources {
+			if src == source {
+				if i < len(s.Map.SourcesContent) {
+					return s.Map.SourcesContent[i]
+				}
+				break
+			}
+		}
+	}
+	return ""
 }
 
 func checkVersion(version int) error {

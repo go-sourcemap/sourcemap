@@ -1,6 +1,7 @@
 package sourcemap_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -79,7 +80,7 @@ func testSourceMap(t *testing.T, json string) {
 		t.Fatal(err)
 	}
 
-	tests := []*sourceMapTest{
+	tests := []sourceMapTest{
 		{1, 1, "/the/root/one.js", "", 1, 1},
 		{1, 5, "/the/root/one.js", "", 1, 5},
 		{1, 9, "/the/root/one.js", "", 1, 11},
@@ -100,8 +101,18 @@ func testSourceMap(t *testing.T, json string) {
 		{1, 30, "/the/root/one.js", "baz", 2, 10},
 		{2, 12, "/the/root/two.js", "", 1, 11},
 	}
-	for _, test := range tests {
-		test.assert(t, smap)
+	for i := range tests {
+		tests[i].assert(t, smap)
+	}
+
+	content := smap.SourceContent("/the/root/one.js")
+	if content != oneSourceContent {
+		t.Fatalf("%q != %q", content, oneSourceContent)
+	}
+
+	content = smap.SourceContent("/the/root/two.js")
+	if content != twoSourceContent {
+		t.Fatalf("%q != %q", content, twoSourceContent)
 	}
 
 	_, _, _, _, ok := smap.Source(3, 0)
@@ -219,16 +230,30 @@ func TestJQuerySourceMap(t *testing.T) {
 const genCode = `exports.testGeneratedCode = "ONE.foo=function(a){return baz(a);};
 TWO.inc=function(a){return a+1;};`
 
-const sourceMapJSON = `{
+var oneSourceContent = `ONE.foo = function (bar) {
+  return baz(bar);
+};`
+
+var twoSourceContent = `TWO.inc = function (n) {
+  return n + 1;
+};`
+
+var sourceMapJSON = `{
   "version": 3,
   "file": "min.js",
   "sources": ["one.js", "two.js"],
+  "sourcesContent": ` + j([]string{oneSourceContent, twoSourceContent}) + `,
   "sourceRoot": "/the/root",
   "names": ["bar", "baz", "n"],
   "mappings": "CAAC,IAAI,IAAM,SAAUA,GAClB,OAAOC,IAAID;CCDb,IAAI,IAAM,SAAUE,GAClB,OAAOA"
 }`
 
-const indexedSourceMapJSON = `{
+func j(v interface{}) string {
+	b, _ := json.Marshal(v)
+	return string(b)
+}
+
+var indexedSourceMapJSON = `{
   "version": 3,
   "file": "min.js",
   "sections": [{
@@ -237,6 +262,7 @@ const indexedSourceMapJSON = `{
       "version": 3,
       "file": "min.js",
       "sources": ["one.js"],
+      "sourcesContent": ` + j([]string{oneSourceContent}) + `,
       "sourceRoot": "/the/root",
       "names": ["bar", "baz"],
       "mappings": "CAAC,IAAI,IAAM,SAAUA,GAClB,OAAOC,IAAID"
@@ -247,6 +273,7 @@ const indexedSourceMapJSON = `{
       "version": 3,
       "file": "min.js",
       "sources": ["two.js"],
+      "sourcesContent": ` + j([]string{twoSourceContent}) + `,
       "sourceRoot": "/the/root",
       "names": ["n"],
       "mappings": "CAAC,IAAI,IAAM,SAAUA,GAClB,OAAOA"
