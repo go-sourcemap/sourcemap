@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"path"
 	"sort"
-	"strconv"
 )
 
 type sourceMap struct {
@@ -15,7 +14,7 @@ type sourceMap struct {
 	SourceRoot     string        `json:"sourceRoot"`
 	Sources        []string      `json:"sources"`
 	SourcesContent []string      `json:"sourcesContent"`
-	Names          []interface{} `json:"names"`
+	Names          []json.Number `json:"names"`
 	Mappings       string        `json:"mappings"`
 
 	mappings []mapping
@@ -186,15 +185,7 @@ func (c *Consumer) source(
 		source = m.Sources[match.sourcesInd]
 	}
 	if match.namesInd >= 0 {
-		v := m.Names[match.namesInd]
-		switch v := v.(type) {
-		case string:
-			name = v
-		case float64:
-			name = strconv.FormatFloat(v, 'f', -1, 64)
-		default:
-			name = fmt.Sprint(v)
-		}
+		name = string(m.Names[match.namesInd])
 	}
 	line = int(match.sourceLine)
 	column = int(match.sourceColumn)
