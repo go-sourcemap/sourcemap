@@ -38,6 +38,8 @@ func parseMappings(s string) ([]mapping, error) {
 	m := &mappings{
 		rd:  rd,
 		dec: base64vlq.NewDecoder(rd),
+
+		values: make([]mapping, 0, mappingsNumber(s)),
 	}
 	m.value.genLine = 1
 	m.value.sourceLine = 1
@@ -50,6 +52,10 @@ func parseMappings(s string) ([]mapping, error) {
 	values := m.values
 	m.values = nil
 	return values, nil
+}
+
+func mappingsNumber(s string) int {
+	return strings.Count(s, ",") + strings.Count(s, ";")
 }
 
 func (m *mappings) parse() error {
