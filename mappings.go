@@ -5,23 +5,23 @@ import (
 	"io"
 	"strings"
 
-	"github.com/go-sourcemap/sourcemap/base64vlq"
+	"github.com/go-sourcemap/sourcemap/internal/base64vlq"
 )
 
 type fn func(m *mappings) (fn, error)
 
 type mapping struct {
-	genLine      int
-	genColumn    int
-	sourcesInd   int
-	sourceLine   int
-	sourceColumn int
-	namesInd     int
+	genLine      int32
+	genColumn    int32
+	sourcesInd   int32
+	sourceLine   int32
+	sourceColumn int32
+	namesInd     int32
 }
 
 type mappings struct {
 	rd  *strings.Reader
-	dec *base64vlq.Decoder
+	dec base64vlq.Decoder
 
 	hasName bool
 	value   mapping
@@ -46,7 +46,10 @@ func parseMappings(s string) ([]mapping, error) {
 	if err != nil {
 		return nil, err
 	}
-	return m.values, nil
+
+	values := m.values
+	m.values = nil
+	return values, nil
 }
 
 func (m *mappings) parse() error {
