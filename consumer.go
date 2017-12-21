@@ -9,11 +9,6 @@ import (
 	"strconv"
 )
 
-type v3 struct {
-	sourceMap
-	Sections []section `json:"sections"`
-}
-
 type sourceMap struct {
 	Version        int           `json:"version"`
 	File           string        `json:"file"`
@@ -24,6 +19,11 @@ type sourceMap struct {
 	Mappings       string        `json:"mappings"`
 
 	mappings []mapping
+}
+
+type v3 struct {
+	sourceMap
+	Sections []section `json:"sections"`
 }
 
 func (m *sourceMap) parse(mapURL string) error {
@@ -161,10 +161,10 @@ func (c *Consumer) source(
 ) (source, name string, line, column int, ok bool) {
 	i := sort.Search(len(m.mappings), func(i int) bool {
 		m := &m.mappings[i]
-		if m.genLine == genLine {
-			return m.genColumn >= genColumn
+		if int(m.genLine) == genLine {
+			return int(m.genColumn) >= genColumn
 		}
-		return m.genLine >= genLine
+		return int(m.genLine) >= genLine
 	})
 
 	// Mapping not found.
@@ -175,7 +175,7 @@ func (c *Consumer) source(
 	match := &m.mappings[i]
 
 	// Fuzzy match.
-	if match.genLine > genLine || match.genColumn > genColumn {
+	if int(match.genLine) > genLine || int(match.genColumn) > genColumn {
 		if i == 0 {
 			return
 		}
@@ -196,8 +196,8 @@ func (c *Consumer) source(
 			name = fmt.Sprint(v)
 		}
 	}
-	line = match.sourceLine
-	column = match.sourceColumn
+	line = int(match.sourceLine)
+	column = int(match.sourceColumn)
 	ok = true
 	return
 }

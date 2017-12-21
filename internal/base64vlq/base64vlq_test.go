@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/go-sourcemap/sourcemap/base64vlq"
+	"github.com/go-sourcemap/sourcemap/internal/base64vlq"
 )
 
 func TestEncodeDecode(t *testing.T) {
@@ -12,13 +12,13 @@ func TestEncodeDecode(t *testing.T) {
 	enc := base64vlq.NewEncoder(buf)
 	dec := base64vlq.NewDecoder(buf)
 
-	for n := -1000; n < 1000; n++ {
+	for n := int32(-1000); n < 1000; n++ {
 		if err := enc.Encode(n); err != nil {
 			panic(err)
 		}
 	}
 
-	for n := -1000; n < 1000; n++ {
+	for n := int32(-1000); n < 1000; n++ {
 		nn, err := dec.Decode()
 		if err != nil {
 			panic(err)
