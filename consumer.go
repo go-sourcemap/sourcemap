@@ -25,7 +25,7 @@ type v3 struct {
 	Sections []section `json:"sections"`
 }
 
-func (m *sourceMap) parse(mapURL string) error {
+func (m *sourceMap) parse(sourcemapURL string) error {
 	if err := checkVersion(m.Version); err != nil {
 		return err
 	}
@@ -39,8 +39,8 @@ func (m *sourceMap) parse(mapURL string) error {
 		if u.IsAbs() {
 			sourceRootURL = u
 		}
-	} else if mapURL != "" {
-		u, err := url.Parse(mapURL)
+	} else if sourcemapURL != "" {
+		u, err := url.Parse(sourcemapURL)
 		if err != nil {
 			return err
 		}
@@ -97,11 +97,12 @@ type section struct {
 }
 
 type Consumer struct {
-	file     string
-	sections []section
+	sourcemapURL string
+	file         string
+	sections     []section
 }
 
-func Parse(mapURL string, b []byte) (*Consumer, error) {
+func Parse(sourcemapURL string, b []byte) (*Consumer, error) {
 	v3 := new(v3)
 	err := json.Unmarshal(b, v3)
 	if err != nil {
@@ -119,7 +120,7 @@ func Parse(mapURL string, b []byte) (*Consumer, error) {
 	}
 
 	for _, s := range v3.Sections {
-		err := s.Map.parse(mapURL)
+		err := s.Map.parse(sourcemapURL)
 		if err != nil {
 			return nil, err
 		}
@@ -127,9 +128,14 @@ func Parse(mapURL string, b []byte) (*Consumer, error) {
 
 	reverse(v3.Sections)
 	return &Consumer{
-		file:     v3.File,
-		sections: v3.Sections,
+		sourcemapURL: sourcemapURL,
+		file:         v3.File,
+		sections:     v3.Sections,
 	}, nil
+}
+
+func (c *Consumer) SourcemapURL() string {
+	return c.sourcemapURL
 }
 
 // File returns an optional name of the generated code
