@@ -96,6 +96,9 @@ func testSourceMap(t *testing.T, json string) {
 		{2, 21, "/the/root/two.js", "", 2, 3},
 		{2, 28, "/the/root/two.js", "n", 2, 10},
 
+		// line correct, column bigger than last mapping
+		{2, 29, "/the/root/two.js", "n", 2, 10},
+
 		// Fuzzy match.
 		{1, 20, "/the/root/one.js", "bar", 1, 21},
 		{1, 30, "/the/root/one.js", "baz", 2, 10},
