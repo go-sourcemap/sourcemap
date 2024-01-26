@@ -66,6 +66,23 @@ func (test *sourceMapTest) assert(t *testing.T, smap *sourcemap.Consumer) {
 	}
 }
 
+func TestSourceWithEmptySourceMap(t *testing.T) {
+	var jsmap = `{
+  "version": 3,
+  "mappings": ";;"
+}`
+
+	smap, err := sourcemap.Parse("noname", []byte(jsmap))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, _, _, matched := smap.Source(1, 1)
+	if matched {
+		t.Error("it is unexpected to match an empty SourceMap")
+	}
+}
+
 func TestSourceMap(t *testing.T) {
 	testSourceMap(t, sourceMapJSON)
 }
