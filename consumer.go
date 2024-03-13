@@ -195,6 +195,10 @@ func (c *Consumer) source(
 	var match *mapping
 	// Mapping not found
 	if i == len(m.mappings) {
+		// Empty mappings
+		if len(m.mappings) == 0 {
+			return
+		}
 		// lets see if the line is correct but the column is bigger
 		match = &m.mappings[i-1]
 		if int(match.genLine) != genLine {
