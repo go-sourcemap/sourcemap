@@ -100,7 +100,7 @@ func (m *sourceMap) name(idx int) string {
 
 	if raw[0] == '"' && raw[len(raw)-1] == '"' {
 		var str string
-		if err := json.Unmarshal(raw, &str); err == nil {
+		if err := unmarshalJSON(raw, &str); err == nil {
 			return str
 		}
 	}
@@ -124,7 +124,7 @@ type Consumer struct {
 
 func Parse(sourcemapURL string, b []byte) (*Consumer, error) {
 	v3 := new(v3)
-	err := json.Unmarshal(b, v3)
+	err := unmarshalJSON(b, v3)
 	if err != nil {
 		return nil, err
 	}
