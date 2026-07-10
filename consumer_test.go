@@ -141,6 +141,30 @@ func testSourceMap(t *testing.T, json string) {
 	}
 }
 
+func TestSourceWithOutOfRangeSourcesInd(t *testing.T) {
+	// mappings "ACAA" decode to genCol=0, sourcesInd=1, sourceLine=0,
+	// sourceCol=0. With a sources array of length 1 this used to panic with
+	// "index out of range" when indexing m.Sources[match.sourcesInd].
+	var jsmap = `{
+  "version": 3,
+  "sources": ["a.js"],
+  "mappings": "ACAA"
+}`
+
+	smap, err := sourcemap.Parse("noname", []byte(jsmap))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	source, _, _, _, ok := smap.Source(1, 1)
+	if !ok {
+		t.Fatal("expected a match for line 1 col 1")
+	}
+	if source != "" {
+		t.Fatalf("unexpected source %q for out-of-range sourcesInd", source)
+	}
+}
+
 func TestSourceRootURL(t *testing.T) {
 	jsonStr := sourceMapJSON
 	jsonStr = strings.Replace(jsonStr, "/the/root", "http://the/root", 1)

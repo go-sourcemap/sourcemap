@@ -216,7 +216,7 @@ func (c *Consumer) source(
 		}
 	}
 
-	if match.sourcesInd >= 0 {
+	if match.sourcesInd >= 0 && match.sourcesInd < int32(len(m.Sources)) {
 		source = m.Sources[match.sourcesInd]
 	}
 	if match.namesInd >= 0 {
