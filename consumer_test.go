@@ -300,3 +300,27 @@ var indexedSourceMapJSON = `{
     }
   }]
 }`
+
+func TestIndexedSourceMapColumnOffsets(t *testing.T) {
+	for _, offsetLine := range []int{0, 3} {
+		data := fmt.Sprintf(`{"version":3,"sections":[
+			{"offset":{"line":%d,"column":0},"map":{"version":3,"sources":["first.js"],"names":[],"mappings":"AAAA"}},
+			{"offset":{"line":%d,"column":10},"map":{"version":3,"sources":["second.js"],"names":[],"mappings":"AAAA;AACA,KAAK"}}
+		]}`, offsetLine, offsetLine)
+		consumer, err := sourcemap.Parse("", []byte(data))
+		if err != nil {
+			t.Fatal(err)
+		}
+		tests := []sourceMapTest{
+			{1 + offsetLine, 0, "first.js", "", 1, 0},
+			{1 + offsetLine, 9, "first.js", "", 1, 0},
+			{1 + offsetLine, 10, "second.js", "", 1, 0},
+			{1 + offsetLine, 15, "second.js", "", 1, 0},
+			{2 + offsetLine, 0, "second.js", "", 2, 0},
+			{2 + offsetLine, 5, "second.js", "", 2, 5},
+		}
+		for _, test := range tests {
+			t.Run(test.String(), func(t *testing.T) { test.assert(t, consumer) })
+		}
+	}
+}

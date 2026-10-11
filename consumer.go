@@ -171,10 +171,12 @@ func (c *Consumer) Source(
 ) (source, name string, line, column int, ok bool) {
 	for i := range c.sections {
 		s := &c.sections[i]
-		if s.Offset.Line < genLine ||
+		if s.Offset.Line+1 < genLine ||
 			(s.Offset.Line+1 == genLine && s.Offset.Column <= genColumn) {
 			genLine -= s.Offset.Line
-			genColumn -= s.Offset.Column
+			if genLine == 1 {
+				genColumn -= s.Offset.Column
+			}
 			return c.source(s.Map, genLine, genColumn)
 		}
 	}
