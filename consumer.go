@@ -14,7 +14,7 @@ type sourceMap struct {
 	SourceRoot     string            `json:"sourceRoot"`
 	Sources        []string          `json:"sources"`
 	SourcesContent []string          `json:"sourcesContent"`
-	Names          []json.RawMessage `json:"names,string"`
+	Names          []json.RawMessage `json:"names"`
 	Mappings       string            `json:"mappings"`
 
 	mappings []mapping
