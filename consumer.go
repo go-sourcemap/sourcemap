@@ -46,6 +46,9 @@ func (m *sourceMap) parse(sourcemapURL string) error {
 		}
 		if u.IsAbs() {
 			u.Path = path.Dir(u.Path)
+			u.RawQuery = ""
+			u.ForceQuery = false
+			u.Fragment = ""
 			sourceRootURL = u
 		}
 	}
