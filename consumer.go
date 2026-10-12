@@ -216,6 +216,10 @@ func (c *Consumer) source(
 		}
 	}
 
+	if int(match.genLine) != genLine {
+		return
+	}
+
 	if match.sourcesInd >= 0 {
 		source = m.Sources[match.sourcesInd]
 	}
